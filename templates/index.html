@@ -1,1 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Mapas KMZ desde Excel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a73e8;
+            font-size: 28px;
+            margin-top: 0;
+        }
+        .instrucciones {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #1a73e8;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: #fafafa;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            border-color: #1a73e8;
+            background: #f1f3f4;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background: #0c5fcf;
+        }
+        .btn:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background: #e2f0ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🗺️ Generador de Mapa para Google My Maps</h1>
+    <div class="instrucciones">
+        <strong>📌 ¿Cómo usar?</strong><br>
+        - Tu Excel debe tener una columna llamada <strong>"Nombre Comercial"</strong>.<br>
+        - Opción A: columnas <strong>"Latitud"</strong> y <strong>"Longitud"</strong> (números).<br>
+        - Opción B: columna <strong>"Dirección"</strong> (requiere API Key, configurar en backend).<br>
+        - Opcional: columna <strong>"Categoría"</strong> para colorear los marcadores.<br>
+        - Se incluirán TODAS las demás columnas en la ventana de información.
+    </div>
 
+    <div class="upload-area" id="dropZone">
+        <p>📂 Arrastra tu archivo Excel aquí o haz clic para seleccionar</p>
+        <input type="file" id="fileInput" accept=".xlsx, .xls">
+        <button class="btn" id="uploadBtn" style="margin-top: 15px;">Seleccionar archivo</button>
+    </div>
+
+    <div id="status"></div>
+    <footer>El archivo generado (.kmz) se puede importar directamente en <a href="https://www.google.com/maps/d/" target="_blank">Google My Maps</a>.</footer>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const dropZone = document.getElementById('dropZone');
+    const statusDiv = document.getElementById('status');
+
+    let selectedFile = null;
+
+    // Abrir selector de archivos al hacer clic en el botón o en el área
+    function triggerFileInput() {
+        fileInput.click();
+    }
+    uploadBtn.addEventListener('click', triggerFileInput);
+    dropZone.addEventListener('click', triggerFileInput);
+
+    // Manejar selección de archivo
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            selectedFile = e.target.files[0];
+            uploadBtn.textContent = `📎 ${selectedFile.name} - Procesar`;
+            uploadBtn.disabled = false;
+            showStatus(`Archivo listo: ${selectedFile.name}`, 'success');
+        } else {
+            resetSelection();
+        }
+    });
+
+    // Arrastrar y soltar
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#1a73e8';
+        dropZone.style.background = '#e8f0fe';
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.background = '#fafafa';
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.background = '#fafafa';
+        if (e.dataTransfer.files.length) {
+            selectedFile = e.dataTransfer.files[0];
+            fileInput.files = e.dataTransfer.files;
+            uploadBtn.textContent = `📎 ${selectedFile.name} - Procesar`;
+            uploadBtn.disabled = false;
+            showStatus(`Archivo listo: ${selectedFile.name}`, 'success');
+        }
+    });
+
+    async function uploadFile() {
+        if (!selectedFile) {
+            showStatus('❌ Por favor selecciona un archivo Excel', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('excel_file', selectedFile);
+
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '⏳ Procesando...';
+        showStatus('🔄 Procesando tu archivo, esto puede tomar unos segundos...', 'loading');
+
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                // Descargar el archivo KMZ
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'mapa_generado.kmz';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showStatus('✅ ¡Mapa generado con éxito! Se ha descargado el archivo KMZ.', 'success');
+                resetSelection();
+            } else {
+                const errorData = await response.json();
+                showStatus(`❌ Error: ${errorData.error || 'Error desconocido'}`, 'error');
+            }
+        } catch (err) {
+            showStatus(`❌ Error de conexión: ${err.message}`, 'error');
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Seleccionar archivo';
+        }
+    }
+
+    function showStatus(message, type) {
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
+        statusDiv.style.display = 'block';
+        setTimeout(() => {
+            if (type !== 'loading') {
+                setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+            }
+        }, 100);
+    }
+
+    function resetSelection() {
+        selectedFile = null;
+        fileInput.value = '';
+        uploadBtn.textContent = 'Seleccionar archivo';
+        uploadBtn.disabled = true;
+    }
+
+    // Conectar el botón de procesar (podría ser otro botón)
+    // Añadimos un botón de procesar aparte o usamos el mismo después de seleccionar
+    // Mejor: después de seleccionar, el mismo botón hace el upload
+    // Pero actualmente el botón abre el selector. Modifiquemos: el botón cambia a "Procesar" y al hacer clic ejecuta uploadFile.
+    // Para evitar conflictos, reasignamos el evento click del botón dinámicamente.
+    function setupButton() {
+        uploadBtn.removeEventListener('click', triggerFileInput);
+        uploadBtn.addEventListener('click', () => {
+            if (selectedFile) {
+                uploadFile();
+            } else {
+                triggerFileInput();
+            }
+        });
+    }
+    setupButton();
+</script>
+</body>
+</html>
