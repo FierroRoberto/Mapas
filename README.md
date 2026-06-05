@@ -1,18 +1,28 @@
-# Generador de mapas desde Excel a Google My Maps
+# 🗺️ Excel a Google My Maps (KMZ)
 
-Convierte un archivo Excel con direcciones o coordenadas en un mapa interactivo para Google My Maps, usando Google Colab (sin instalar nada).
+Aplicación web que convierte un archivo Excel con direcciones o coordenadas en un mapa interactivo (formato KMZ) compatible con **Google My Maps** y **Google Earth**.
 
-## Cómo usar
-1. Abre el cuaderno de Colab: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TU_USUARIO/TU_REPOSITORIO/blob/main/colab_notebook.ipynb)
-   (cambia la URL por la de tu repositorio)
-2. Sube tu Excel (plantilla en `ejemplo_coordenadas.xlsx`)
-3. Descarga el archivo `.kmz`
-4. Impórtalo en Google My Maps
+## ✨ Características
 
-## Estructura del Excel
-- Columna obligatoria: `Nombre Comercial`
-- Opción A: columnas `Latitud` y `Longitud` (números)
-- Opción B: columna `Dirección` (texto) + API Key de Google
+- Sube un archivo Excel (`.xlsx` o `.xls`) con tus ubicaciones.
+- Detecta automáticamente las columnas:
+  - **Nombre Comercial** (obligatorio)
+  - **Latitud** y **Longitud** (opcional, si ya tienes coordenadas)
+  - **Dirección** (opcional, geocodificación automática con Google Maps API)
+  - **Categoría** (opcional, asigna colores a los marcadores)
+- Muestra toda la información de cada fila en la ventana emergente del marcador.
+- Genera un archivo `.kmz` listo para importar en Google My Maps.
+- Interfaz web sencilla con arrastrar y soltar archivos.
 
-## Licencia
-MIT
+## 📋 Requisitos previos
+
+- Python 3.8 o superior
+- pip (administrador de paquetes de Python)
+- (Opcional) Clave de API de Google Maps Geocoding si usas direcciones en lugar de coordenadas.
+
+## 🚀 Instalación y ejecución local
+
+1. **Clona el repositorio** (o descarga los archivos):
+   ```bash
+   git clone https://github.com/tu-usuario/excel-a-google-maps.git
+   cd excel-a-google-maps
