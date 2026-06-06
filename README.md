@@ -2,14 +2,15 @@
 
 Convierte un archivo Excel con coordenadas en un mapa interactivo (`.kmz`) listo para importar en **Google My Maps** o Google Earth.
 
+> ✅ **100% en el navegador** — Ningún dato se envía a ningún servidor. Todo el procesamiento ocurre localmente en tu computadora.
+
 ---
 
-## ✨ ¿Qué hace esta aplicación?
+## 🌐 Ver la app en línea
 
-1. Lees tu Excel con ubicaciones (negocios, puntos de interés, clientes, etc.)
-2. Subes el archivo en la web
-3. Descargas un archivo `.kmz` con todos los puntos ya en el mapa
-4. Importas ese archivo en Google My Maps → ¡listo!
+👉 **https://TU-USUARIO.github.io/TU-REPOSITORIO**
+
+*(Reemplaza con tu usuario y nombre de repositorio de GitHub)*
 
 ---
 
@@ -17,82 +18,85 @@ Convierte un archivo Excel con coordenadas en un mapa interactivo (`.kmz`) listo
 
 Tu archivo debe tener **al menos estas dos columnas**:
 
-| Columna              | Obligatorio | Ejemplo                   |
-|----------------------|-------------|---------------------------|
-| `Nombre Comercial`   | ✅ Sí        | Ferretería El Tornillo     |
-| `Ubicacion`          | ✅ Sí        | `19.4326, -99.1332`       |
-| `Categoría`          | ❌ No        | Tienda / Restaurante / ... |
-| (cualquier otra)     | ❌ No        | Aparece en el marcador    |
+| Columna            | Obligatorio | Ejemplo                |
+|--------------------|-------------|------------------------|
+| `Nombre Comercial` | ✅ Sí        | Ferretería El Tornillo |
+| `Ubicacion`        | ✅ Sí        | `19.4326, -99.1332`   |
+| `Categoría`        | ❌ No        | Tienda / Restaurante   |
+| (cualquier otra)   | ❌ No        | Aparece en el marcador |
 
-> 💡 **¿Cómo obtengo las coordenadas?**  
-> En Google Maps, haz clic derecho sobre el lugar → aparecen las coordenadas.  
-> Cópialas con este formato exacto: `latitud, longitud`
+> 💡 **¿Cómo obtengo las coordenadas?**
+> En Google Maps, haz clic derecho sobre el lugar → aparecen las coordenadas.
+> Cópialas con este formato: `latitud, longitud`
 
 ### Categorías con color automático
 
-Si agregas una columna `Categoría`, los marcadores tendrán colores distintos:
-
-| Categoría   | Color en mapa   |
-|-------------|-----------------|
-| Café / Cafetería | Naranja   |
-| Restaurante      | Rojo      |
+| Categoría        | Color       |
+|------------------|-------------|
+| Café / Cafetería | Naranja     |
+| Restaurante      | Rojo        |
 | Parque           | Verde claro |
-| Tienda           | Verde amarillo |
-| Farmacia         | Cian      |
-| Hospital         | Blanco    |
-| Banco            | Dorado    |
-| Hotel            | Violeta   |
-| Escuela          | Naranja   |
-| Cualquier otro   | Azul      |
+| Tienda           | Amarillo    |
+| Farmacia         | Cian        |
+| Hospital         | Blanco      |
+| Banco            | Dorado      |
+| Hotel            | Violeta     |
+| Escuela          | Naranja     |
+| Cualquier otro   | Azul        |
 
 ---
 
-## 🚀 Cómo instalar y ejecutar
+## 🚀 Cómo subir a GitHub y activar GitHub Pages
 
-### Requisitos previos
+### Paso 1 — Crear el repositorio en GitHub
 
-- **Python 3.8 o superior** instalado en tu computadora
-- Acceso a la terminal (CMD en Windows, Terminal en Mac/Linux)
+1. Ve a [github.com](https://github.com) e inicia sesión
+2. Clic en **"New repository"** (botón verde, arriba a la derecha)
+3. Ponle un nombre, por ejemplo: `mapa-kmz`
+4. Déjalo en **Public**
+5. Clic en **"Create repository"**
 
-### Paso 1: Descarga los archivos
+---
 
-Guarda todos los archivos en una carpeta, por ejemplo `C:\kmz-app\`
+### Paso 2 — Subir los archivos
 
-Estructura de carpetas:
-```
-kmz-app/
-├── app.py
-├── requirements.txt
-└── templates/
-    └── index.html
-```
+#### Opción A: Desde el navegador (más fácil, sin instalar nada)
 
-### Paso 2: Instala las dependencias
+1. En tu repositorio recién creado, clic en **"uploading an existing file"**
+2. Arrastra el archivo `index.html` a la ventana
+3. Clic en **"Commit changes"** (botón verde abajo)
 
-Abre una terminal dentro de la carpeta y escribe:
+#### Opción B: Desde la terminal (Git)
 
 ```bash
-pip install -r requirements.txt
+# Clona tu repositorio vacío
+git clone https://github.com/TU-USUARIO/mapa-kmz.git
+cd mapa-kmz
+
+# Copia el archivo index.html aquí y luego:
+git add index.html
+git commit -m "Agregar generador de mapas KMZ"
+git push origin main
 ```
 
-Espera a que termine la instalación.
+---
 
-### Paso 3: Ejecuta la aplicación
+### Paso 3 — Activar GitHub Pages
 
-```bash
-python app.py
-```
+1. En tu repositorio, clic en **"Settings"** (pestaña con ícono de engrane)
+2. En el menú izquierdo, clic en **"Pages"**
+3. En la sección **"Branch"**, selecciona `main` y carpeta `/ (root)`
+4. Clic en **"Save"**
+5. Espera 1-2 minutos y aparecerá tu URL:
+   ```
+   https://TU-USUARIO.github.io/mapa-kmz
+   ```
 
-Verás algo así:
-```
- * Running on http://0.0.0.0:5000
-```
+---
 
-### Paso 4: Abre en tu navegador
+### Paso 4 — ¡Listo!
 
-Ve a: **http://localhost:5000**
-
-¡Ya puedes subir tu Excel y generar el mapa!
+Comparte esa URL con quien quieras. Funciona en cualquier navegador, en computadora y en celular.
 
 ---
 
@@ -100,7 +104,7 @@ Ve a: **http://localhost:5000**
 
 1. Ve a [maps.google.com/d](https://www.google.com/maps/d/)
 2. Crea un mapa nuevo o abre uno existente
-3. Haz clic en **Importar** (dentro de una capa)
+3. Clic en **"Importar"** (dentro de una capa)
 4. Selecciona el archivo `mapa_generado.kmz`
 5. ¡Tus puntos aparecen en el mapa!
 
@@ -110,15 +114,28 @@ Ve a: **http://localhost:5000**
 
 | Problema | Solución |
 |----------|----------|
-| "No se encontraron coordenadas" | Verifica que la columna se llame exactamente `Ubicacion` y el formato sea `lat, lon` |
-| "Formato no soportado" | Usa archivos `.xlsx` o `.xls`, no `.csv` ni `.ods` |
-| Marcadores en el océano | Las coordenadas pueden estar invertidas (lon, lat en vez de lat, lon) |
-| El mapa no abre | El archivo se genera localmente; necesitas importarlo en Google My Maps |
+| "Sin coordenadas válidas" | La columna debe llamarse exactamente `Ubicacion` (sin tilde) y el formato ser `lat, lon` |
+| "Formato no válido" | Usa `.xlsx` o `.xls`, no `.csv` ni `.ods` |
+| Marcadores en el océano | Las coordenadas pueden estar invertidas (lon, lat) — la app intenta corregirlo automáticamente |
+| La página da error 404 | Espera 2 minutos después de activar GitHub Pages y recarga |
 
 ---
 
-## 🔧 Versión
+## 🛠️ Tecnologías utilizadas
 
-- **v2.0** — Mayo 2026
-- Backend: Flask + pandas + simplekml
-- Frontend: HTML5 / CSS3 / JS vanilla
+- **[SheetJS](https://sheetjs.com/)** — Lee archivos Excel directamente en el navegador
+- **[JSZip](https://stuk.github.io/jszip/)** — Genera el archivo KMZ (que es un ZIP con un KML adentro)
+- HTML5 / CSS3 / JavaScript puro — Sin frameworks, sin servidor
+
+---
+
+## 📁 Estructura del proyecto
+
+```
+mapa-kmz/
+└── index.html     ← toda la app en un solo archivo
+```
+
+---
+
+*Versión 2.0 — Junio 2026*

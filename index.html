@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KMZ Generator — Excel a Google Maps</title>
+
+  <!-- SheetJS: leer Excel en el navegador -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- JSZip: crear el archivo KMZ (que es un ZIP con un KML adentro) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- Fuentes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:          #0c0f1a;
+      --surface:     #141929;
+      --surface-2:   #1c2338;
+      --border:      rgba(255,255,255,.07);
+      --border-hi:   rgba(99,179,237,.35);
+      --accent:      #3b82f6;
+      --accent-2:    #06b6d4;
+      --accent-glow: rgba(59,130,246,.25);
+      --ok:          #10b981;
+      --ok-bg:       rgba(16,185,129,.1);
+      --err:         #f87171;
+      --err-bg:      rgba(248,113,113,.1);
+      --text-hi:     #f0f4ff;
+      --text-mid:    #8b95b0;
+      --text-lo:     #4b5675;
+      --radius:      16px;
+      --radius-sm:   10px;
+      --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text-hi);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Fondo animado ── */
+    .bg-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; overflow: hidden;
+    }
+    .bg-canvas::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridDrift 30s linear infinite;
+    }
+    @keyframes gridDrift {
+      from { transform: translateY(0); }
+      to   { transform: translateY(48px); }
+    }
+    .orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(100px); opacity: .35;
+      animation: orbFloat 20s ease-in-out infinite alternate;
+    }
+    .orb-1 { width:600px;height:600px; background:radial-gradient(circle,#3b82f6 0%,transparent 70%); top:-200px;left:-100px; animation-duration:22s; }
+    .orb-2 { width:500px;height:500px; background:radial-gradient(circle,#06b6d4 0%,transparent 70%); bottom:-150px;right:-100px; animation-duration:18s;animation-delay:-8s; }
+    .orb-3 { width:300px;height:300px; background:radial-gradient(circle,#8b5cf6 0%,transparent 70%); top:50%;left:50%;transform:translate(-50%,-50%); animation-duration:25s;animation-delay:-12s; }
+    @keyframes orbFloat {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(40px,30px) scale(1.05); }
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh; padding: 40px 20px 80px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center; margin-bottom: 48px;
+      opacity:0; transform:translateY(-20px);
+      animation: fadeUp 600ms var(--ease-out) 100ms forwards;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surface-2); border: 1px solid var(--border-hi);
+      border-radius: 999px; padding: 5px 14px;
+      font-size: 12px; font-weight: 500; color: var(--accent-2);
+      letter-spacing: .06em; text-transform: uppercase; margin-bottom: 20px;
+    }
+    .badge-dot {
+      width:6px;height:6px; background:var(--accent-2);
+      border-radius:50%; animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(32px,5vw,56px); font-weight: 800; line-height: 1.1;
+      background: linear-gradient(135deg,#f0f4ff 30%,#3b82f6 70%,#06b6d4 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      margin-bottom: 14px;
+    }
+    .subtitle { font-size:16px; color:var(--text-mid); font-weight:300; max-width:460px; line-height:1.6; }
+
+    /* ── Card ── */
+    .card {
+      width:100%; max-width:680px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:36px; position:relative; overflow:hidden;
+      opacity:0; transform:translateY(20px);
+      animation: fadeUp 600ms var(--ease-out) 250ms forwards;
+    }
+    .card::before {
+      content:''; position:absolute; top:0; left:10%; right:10%; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(99,179,237,.5),transparent);
+    }
+
+    /* ── Instrucciones ── */
+    .instrucciones {
+      background:var(--surface-2); border:1px solid var(--border);
+      border-left:3px solid var(--accent); border-radius:var(--radius-sm);
+      padding:18px 20px; margin-bottom:28px;
+      font-size:13.5px; line-height:1.7; color:var(--text-mid);
+      opacity:0; animation: fadeUp 500ms var(--ease-out) 350ms forwards;
+    }
+    .instrucciones strong { color:var(--text-hi); font-weight:500; }
+    .instr-title {
+      display:flex; align-items:center; gap:8px;
+      font-family:'Syne',sans-serif; font-size:14px; font-weight:700;
+      color:var(--text-hi); margin-bottom:10px;
+    }
+    .instr-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; }
+    .instr-item { display:flex; align-items:flex-start; gap:8px; }
+    .instr-icon {
+      flex-shrink:0; width:18px;height:18px; border-radius:4px;
+      background:var(--accent-glow); display:flex;align-items:center;justify-content:center;
+      font-size:10px; margin-top:2px;
+    }
+
+    /* ── Zona de carga ── */
+    .upload-area {
+      border:2px dashed var(--border); border-radius:var(--radius);
+      padding:48px 32px; text-align:center; cursor:pointer;
+      transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out), transform 200ms var(--ease-out);
+      background:transparent; position:relative; margin-bottom:20px;
+      opacity:0; animation: fadeUp 500ms var(--ease-out) 450ms forwards;
+    }
+    @media (hover:hover) and (pointer:fine) {
+      .upload-area:hover { border-color:var(--accent); background:var(--accent-glow); transform:translateY(-2px); }
+      .upload-area:hover .upload-icon { transform:translateY(-4px); }
+    }
+    .upload-area.drag-over { border-color:var(--accent); background:rgba(59,130,246,.12); transform:scale(1.01); }
+    .upload-area.has-file  { border-color:var(--ok); background:var(--ok-bg); }
+    input[type="file"] { display:none; }
+    .upload-icon { font-size:48px; margin-bottom:16px; display:block; transition:transform 300ms var(--ease-out); }
+    .upload-label { font-size:15px; color:var(--text-mid); margin-bottom:6px; }
+    .upload-label strong { color:var(--text-hi); }
+    .upload-hint { font-size:12px; color:var(--text-lo); }
+    .file-selected-info {
+      display:none; align-items:center; justify-content:center; gap:10px;
+      margin-top:14px; padding:10px 16px;
+      background:var(--surface-2); border:1px solid var(--border);
+      border-radius:var(--radius-sm); font-size:13px; color:var(--text-hi);
+    }
+    .file-selected-info.visible { display:flex; }
+
+    /* ── Botón ── */
+    .btn-process {
+      width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      color:#fff; border:none; border-radius:var(--radius-sm);
+      padding:16px 28px; font-family:'DM Sans',sans-serif;
+      font-size:15px; font-weight:500; cursor:pointer; position:relative; overflow:hidden;
+      transition: transform 160ms var(--ease-out), box-shadow 200ms var(--ease-out), opacity 150ms;
+      opacity:0; animation: fadeUp 500ms var(--ease-out) 550ms forwards;
+    }
+    .btn-process::before {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(135deg,rgba(255,255,255,.15) 0%,transparent 60%);
+      opacity:0; transition:opacity 200ms;
+    }
+    @media (hover:hover) and (pointer:fine) {
+      .btn-process:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 32px rgba(59,130,246,.4); }
+      .btn-process:hover::before { opacity:1; }
+    }
+    .btn-process:active:not(:disabled) { transform:scale(0.97); transition:transform 100ms var(--ease-out); }
+    .btn-process:disabled { opacity:.45; cursor:not-allowed; }
+
+    /* ── Barra de progreso ── */
+    .progress-wrap {
+      height:3px; background:var(--surface-2); border-radius:999px;
+      margin-top:14px; overflow:hidden; opacity:0; transition:opacity 200ms;
+    }
+    .progress-wrap.visible { opacity:1; }
+    .progress-bar {
+      height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      border-radius:999px; width:0%; transition:width 400ms var(--ease-in-out);
+    }
+
+    /* ── Panel resultado ── */
+    .result-panel {
+      display:none; margin-top:24px; border-radius:var(--radius-sm);
+      overflow:hidden; border:1px solid var(--border);
+      transform:translateY(8px); opacity:0;
+    }
+    .result-panel.visible { display:block; animation:fadeUp 350ms var(--ease-out) forwards; }
+    .result-header { display:flex; align-items:center; gap:10px; padding:14px 18px; font-size:14px; font-weight:500; }
+    .result-header.success { background:var(--ok-bg);  color:var(--ok);  border-bottom:1px solid rgba(16,185,129,.15); }
+    .result-header.error   { background:var(--err-bg); color:var(--err); border-bottom:1px solid rgba(248,113,113,.15); }
+    .result-header.loading { background:var(--accent-glow); color:var(--accent); border-bottom:1px solid rgba(59,130,246,.15); }
+    .result-icon { font-size:18px; }
+    .result-stats { display:flex; gap:20px; padding:16px 18px; background:var(--surface-2); }
+    .stat { display:flex; flex-direction:column; gap:2px; }
+    .stat-num { font-family:'Syne',sans-serif; font-size:22px; font-weight:700; color:var(--text-hi); }
+    .stat-label { font-size:11px; color:var(--text-lo); text-transform:uppercase; letter-spacing:.06em; }
+
+    .errors-toggle {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 18px; background:var(--surface-2); border-top:1px solid var(--border);
+      cursor:pointer; font-size:13px; color:var(--err); user-select:none; transition:background 150ms;
+    }
+    .errors-toggle:hover { background:var(--surface); }
+    .errors-toggle .chevron { transition:transform 200ms var(--ease-out); font-size:10px; }
+    .errors-toggle.open .chevron { transform:rotate(180deg); }
+    .errors-list { max-height:0; overflow:hidden; transition:max-height 300ms var(--ease-in-out); }
+    .errors-list.open { max-height:400px; overflow-y:auto; }
+    .error-item {
+      display:flex; gap:10px; padding:10px 18px;
+      border-top:1px solid var(--border); font-size:12.5px;
+      color:var(--text-mid); line-height:1.5; background:var(--surface);
+    }
+    .error-item-icon { color:var(--err); flex-shrink:0; margin-top:1px; }
+
+    /* ── Leyenda ── */
+    .legend {
+      margin-top:32px; padding-top:28px; border-top:1px solid var(--border);
+      opacity:0; animation: fadeUp 500ms var(--ease-out) 650ms forwards;
+    }
+    .legend-title {
+      font-family:'Syne',sans-serif; font-size:13px; font-weight:700;
+      color:var(--text-lo); text-transform:uppercase; letter-spacing:.08em; margin-bottom:14px;
+    }
+    .legend-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }
+    .legend-item {
+      display:flex; align-items:center; gap:8px; padding:8px 10px;
+      background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+      font-size:12px; color:var(--text-mid);
+      transition:border-color 150ms, background 150ms;
+    }
+    .legend-item:hover { border-color:var(--border-hi); background:var(--surface); }
+    .legend-dot { width:10px;height:10px; border-radius:50%; flex-shrink:0; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top:40px; text-align:center; font-size:12px; color:var(--text-lo);
+      opacity:0; animation: fadeUp 500ms var(--ease-out) 750ms forwards;
+    }
+    .footer a { color:var(--accent); text-decoration:none; transition:color 150ms; }
+    .footer a:hover { color:var(--accent-2); }
+
+    /* ── Spinner ── */
+    .spinner {
+      width:18px;height:18px; border:2px solid rgba(255,255,255,.3);
+      border-top-color:#fff; border-radius:50%; animation:spin 500ms linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+    }
+    @media (max-width:540px) {
+      .instr-grid { grid-template-columns:1fr; }
+      .card { padding:24px 18px; }
+      .upload-area { padding:36px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-canvas">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="page">
+
+  <header class="header">
+    <div class="badge"><span class="badge-dot"></span>Excel → Google My Maps</div>
+    <h1>Convierte tu Excel<br/>en un Mapa</h1>
+    <p class="subtitle">Sube tu archivo con coordenadas y genera un mapa interactivo KMZ listo para importar. Todo funciona en tu navegador, sin enviar datos a ningún servidor.</p>
+  </header>
+
+  <div class="card">
+
+    <div class="instrucciones">
+      <div class="instr-title">📌 ¿Cómo preparar tu archivo?</div>
+      <div class="instr-grid">
+        <div class="instr-item">
+          <div class="instr-icon">1</div>
+          <span>Columna <strong>"Nombre Comercial"</strong> con el nombre de cada punto</span>
+        </div>
+        <div class="instr-item">
+          <div class="instr-icon">2</div>
+          <span>Columna <strong>"Ubicacion"</strong> con formato: <strong>19.4326, -99.1332</strong></span>
+        </div>
+        <div class="instr-item">
+          <div class="instr-icon">3</div>
+          <span>Opcional: columna <strong>"Categoría"</strong> para colores distintos en el mapa</span>
+        </div>
+        <div class="instr-item">
+          <div class="instr-icon">4</div>
+          <span>El resto de columnas aparecerán como <strong>información del marcador</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="upload-area" id="dropZone">
+      <span class="upload-icon" id="uploadIcon">📂</span>
+      <p class="upload-label"><strong>Arrastra tu Excel aquí</strong> o haz clic para seleccionar</p>
+      <p class="upload-hint">Formatos aceptados: .xlsx · .xls &nbsp;|&nbsp; Máx. 16 MB</p>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" />
+      <div class="file-selected-info" id="fileInfo">
+        <span>📎</span>
+        <span id="fileName">—</span>
+      </div>
+    </div>
+
+    <button class="btn-process" id="btnProcess" disabled>
+      <span id="btnIcon">✦</span>
+      <span id="btnText">Selecciona un archivo para continuar</span>
+    </button>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="result-panel" id="resultPanel">
+      <div class="result-header" id="resultHeader">
+        <span class="result-icon" id="resultIcon"></span>
+        <span id="resultMsg"></span>
+      </div>
+      <div class="result-stats" id="resultStats" style="display:none"></div>
+      <div id="errorsSection" style="display:none">
+        <div class="errors-toggle" id="errorsToggle">
+          <span id="errorsLabel">Ver filas con error</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="errors-list" id="errorsList"></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Categorías con color en el mapa</div>
+      <div class="legend-grid">
+        <div class="legend-item"><span class="legend-dot" style="background:#ff4500"></span>Café / Cafetería</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Restaurante</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4ade80"></span>Parque</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#a3e635"></span>Tienda</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#22d3ee"></span>Farmacia</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f4f4f5"></span>Hospital</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#fbbf24"></span>Banco</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Hotel</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#fb923c"></span>Escuela</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Otros</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="footer">
+    100% en tu navegador — ningún dato se envía a ningún servidor.<br/>
+    Importa el <strong>.kmz</strong> en <a href="https://www.google.com/maps/d/" target="_blank" rel="noopener">Google My Maps</a> o Google Earth.
+  </footer>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CONFIGURACIÓN DE CATEGORÍAS Y COLORES
+══════════════════════════════════════════════════ */
+const CATEGORY_CONFIG = [
+  { keywords: ['café','cafe','cafetería','cafeteria'], color: 'ff0000ff', icon: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' },
+  { keywords: ['restaurante','restaurant'],            color: 'ff0000cd', icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+  { keywords: ['parque','park'],                       color: 'ff90ee90', icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' },
+  { keywords: ['tienda','store','shop'],               color: 'ff9acd32', icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' },
+  { keywords: ['farmacia','pharmacy'],                 color: 'ffffe4b5', icon: 'http://maps.google.com/mapfiles/ms/icons/ltblue-dot.png' },
+  { keywords: ['hospital','clínica','clinica'],        color: 'ffffffff', icon: 'http://maps.google.com/mapfiles/ms/icons/pink-dot.png' },
+  { keywords: ['banco','bank'],                        color: 'ff00d7ff', icon: 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png' },
+  { keywords: ['hotel','hostal'],                      color: 'ffee82ee', icon: 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png' },
+  { keywords: ['escuela','colegio','universidad'],     color: 'ff00a5ff', icon: 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' },
+];
+const DEFAULT_CONFIG = { color: 'ffff6347', icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' };
+
+/* ══════════════════════════════════════════════════
+   UTILIDADES
+══════════════════════════════════════════════════ */
+
+/** Normaliza texto: quita tildes y pasa a minúsculas */
+function norm(str) {
+  return String(str || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+/** Busca la primera columna que coincida con alguno de los candidatos */
+function findCol(cols, candidates) {
+  const normCols = cols.map(c => ({ original: c, n: norm(c) }));
+  for (const cand of candidates) {
+    const match = normCols.find(c => c.n === norm(cand));
+    if (match) return match.original;
+  }
+  return null;
+}
+
+/** Parsea 'lat, lon' o 'lat lon' → [lat, lon] o null */
+function parseCoords(raw) {
+  if (!raw && raw !== 0) return null;
+  const parts = String(raw).trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+  if (parts.length < 2) return null;
+  const [a, b] = parts;
+  if (a >= -90 && a <= 90 && b >= -180 && b <= 180) return [a, b];
+  if (b >= -90 && b <= 90 && a >= -180 && a <= 180) return [b, a]; // invertidas
+  return null;
+}
+
+/** Devuelve la config de color/icono según categoría */
+function getCategoryConfig(cat) {
+  if (!cat) return DEFAULT_CONFIG;
+  const n = norm(cat);
+  for (const cfg of CATEGORY_CONFIG) {
+    if (cfg.keywords.some(k => n.includes(k))) return cfg;
+  }
+  return DEFAULT_CONFIG;
+}
+
+/** Escapa caracteres especiales para XML/KML */
+function escXml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+/** Escapa HTML para mostrar en pantalla */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════
+   GENERADOR DE KML
+══════════════════════════════════════════════════ */
+function buildKml(rows) {
+  const cols = Object.keys(rows[0] || {});
+
+  const nombreCol   = findCol(cols, ['Nombre Comercial','Nombre','Negocio','Establecimiento','Name']) || cols[0];
+  const ubicacionCol= findCol(cols, ['Ubicacion','Ubicación','Coordenadas','Coords']);
+  const latCol      = findCol(cols, ['Latitud','Latitude','Lat']);
+  const lonCol      = findCol(cols, ['Longitud','Longitude','Lon','Lng']);
+  const catCol      = findCol(cols, ['Categoría','Categoria','Tipo','Category']);
+
+  let ok = 0;
+  const errores = [];
+  const placemarks = [];
+
+  rows.forEach((row, idx) => {
+    const filaNum = idx + 2;
+    const nombre  = String(row[nombreCol] || `Punto ${filaNum}`).trim().slice(0, 200);
+
+    // Coordenadas: prioridad Ubicacion, luego Lat+Lon separadas
+    let coords = null;
+    if (ubicacionCol && row[ubicacionCol] != null) {
+      coords = parseCoords(row[ubicacionCol]);
+    }
+    if (!coords && latCol && lonCol) {
+      const lat = parseFloat(row[latCol]);
+      const lon = parseFloat(row[lonCol]);
+      if (!isNaN(lat) && !isNaN(lon)) {
+        coords = parseCoords(`${lat}, ${lon}`);
+      }
+    }
+
+    if (!coords) {
+      errores.push(`Fila ${filaNum} — "${nombre}": sin coordenadas válidas. Verifica la columna "Ubicacion" (ej: 19.4326, -99.1332).`);
+      return;
+    }
+
+    const [lat, lon] = coords;
+    const cat = catCol ? row[catCol] : null;
+    const { color, icon } = getCategoryConfig(cat);
+
+    // Descripción HTML para la ventana del marcador
+    const extraRows = cols
+      .filter(c => ![nombreCol, ubicacionCol, latCol, lonCol].includes(c))
+      .filter(c => row[c] != null && String(row[c]).trim() !== '')
+      .map(c => `<tr><td style="padding:4px 8px;font-weight:bold;color:#555;white-space:nowrap">${escXml(c)}</td><td style="padding:4px 8px">${escXml(row[c])}</td></tr>`)
+      .join('');
+
+    const desc = `<![CDATA[<div style="font-family:Segoe UI,Arial,sans-serif;min-width:200px">` +
+      `<h3 style="margin:0 0 8px;color:#1a73e8">${escXml(nombre)}</h3>` +
+      (extraRows ? `<table style="border-collapse:collapse;width:100%">${extraRows}</table>` : '') +
+      `<p style="margin:8px 0 0;font-size:11px;color:#aaa">Lat: ${lat.toFixed(6)} | Lon: ${lon.toFixed(6)}</p>` +
+      `</div>]]>`;
+
+    placemarks.push(`
+    <Placemark>
+      <name>${escXml(nombre)}</name>
+      <description>${desc}</description>
+      <Style>
+        <IconStyle>
+          <color>${color}</color>
+          <scale>1.3</scale>
+          <Icon><href>${icon}</href></Icon>
+        </IconStyle>
+        <LabelStyle><scale>0.85</scale></LabelStyle>
+      </Style>
+      <Point><coordinates>${lon},${lat},0</coordinates></Point>
+    </Placemark>`);
+
+    ok++;
+  });
+
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Mapa desde Excel</name>
+    <description>Generado con Excel KMZ Generator</description>
+    ${placemarks.join('\n')}
+  </Document>
+</kml>`;
+
+  return { kml, ok, total: rows.length, errores };
+}
+
+/* ══════════════════════════════════════════════════
+   LECTURA DEL EXCEL con SheetJS
+══════════════════════════════════════════════════ */
+function readExcel(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: false });
+        if (!rows.length) throw new Error('El archivo Excel está vacío. Agrega datos e intenta de nuevo.');
+        resolve(rows);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   DESCARGA DEL KMZ con JSZip
+   (KMZ = ZIP que contiene un doc.kml)
+══════════════════════════════════════════════════ */
+async function downloadKmz(kmlString) {
+  const zip = new JSZip();
+  zip.file('doc.kml', kmlString);
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'mapa_generado.kmz';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════════════════
+   UI
+══════════════════════════════════════════════════ */
+const dropZone     = document.getElementById('dropZone');
+const fileInput    = document.getElementById('fileInput');
+const btnProcess   = document.getElementById('btnProcess');
+const btnIcon      = document.getElementById('btnIcon');
+const btnText      = document.getElementById('btnText');
+const fileInfo     = document.getElementById('fileInfo');
+const fileNameEl   = document.getElementById('fileName');
+const uploadIcon   = document.getElementById('uploadIcon');
+const progressWrap = document.getElementById('progressWrap');
+const progressBar  = document.getElementById('progressBar');
+const resultPanel  = document.getElementById('resultPanel');
+const resultHeader = document.getElementById('resultHeader');
+const resultIcon   = document.getElementById('resultIcon');
+const resultMsg    = document.getElementById('resultMsg');
+const resultStats  = document.getElementById('resultStats');
+const errorsSection= document.getElementById('errorsSection');
+const errorsToggle = document.getElementById('errorsToggle');
+const errorsLabel  = document.getElementById('errorsLabel');
+const errorsList   = document.getElementById('errorsList');
+
+let selectedFile = null;
+let busy = false;
+
+function onFileSelected(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls'].includes(ext)) {
+    showResult('error','⚠️',`Formato ".${ext}" no válido. Usa un archivo .xlsx o .xls de Excel.`,null,[]);
+    return;
+  }
+  if (file.size > 16 * 1024 * 1024) {
+    showResult('error','⚠️','El archivo supera el límite de 16 MB.',null,[]);
+    return;
+  }
+  selectedFile = file;
+  fileNameEl.textContent = file.name;
+  fileInfo.classList.add('visible');
+  dropZone.classList.add('has-file');
+  uploadIcon.textContent = '✅';
+  btnProcess.disabled = false;
+  btnText.textContent = 'Generar mapa KMZ';
+  btnIcon.textContent = '🗺️';
+  hideResult();
+}
+
+dropZone.addEventListener('click', () => { if (!busy) fileInput.click(); });
+fileInput.addEventListener('change', () => { if (fileInput.files.length) onFileSelected(fileInput.files[0]); });
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', e => { if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('drag-over'); });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) onFileSelected(e.dataTransfer.files[0]);
+});
+
+btnProcess.addEventListener('click', async () => {
+  if (!selectedFile || busy) return;
+  busy = true;
+  btnProcess.disabled = true;
+  btnText.textContent = 'Procesando…';
+  btnIcon.innerHTML = '<span class="spinner"></span>';
+  showResult('loading','🔄','Leyendo tu Excel y generando el mapa…',null,[]);
+  showProgress(true);
+
+  // Pequeño delay para que la UI se actualice antes del trabajo pesado
+  await new Promise(r => setTimeout(r, 80));
+
+  try {
+    setProgress(20);
+    const rows = await readExcel(selectedFile);
+    setProgress(50);
+
+    const { kml, ok, total, errores } = buildKml(rows);
+    setProgress(80);
+
+    if (ok === 0) throw new Error('No se pudo crear ningún marcador. Verifica que tu Excel tenga una columna "Ubicacion" con formato correcto (ej: 19.4326, -99.1332).');
+
+    await downloadKmz(kml);
+    setProgress(100);
+    await new Promise(r => setTimeout(r, 300));
+    showProgress(false);
+
+    const msg = errores.length > 0
+      ? `Mapa generado con ${ok} marcador${ok!==1?'es':''} de ${total} filas. ${errores.length} fila${errores.length!==1?'s':''} no pudo procesarse.`
+      : `¡Mapa generado con éxito! ${ok} marcador${ok!==1?'es':''} creado${ok!==1?'s':''}.`;
+
+    showResult('success','✅', msg, { ok, total, errNum: errores.length }, errores);
+    resetSelection();
+
+  } catch(err) {
+    showProgress(false);
+    showResult('error','❌', err.message || 'Error desconocido al procesar el archivo.', null, []);
+  }
+
+  busy = false;
+  btnProcess.disabled = !selectedFile;
+  btnText.textContent = selectedFile ? 'Generar mapa KMZ' : 'Selecciona un archivo para continuar';
+  btnIcon.textContent = selectedFile ? '🗺️' : '✦';
+});
+
+function setProgress(pct) {
+  progressBar.style.width = pct + '%';
+}
+function showProgress(v) {
+  progressWrap.classList.toggle('visible', v);
+  if (!v) setTimeout(() => { progressBar.style.width = '0%'; }, 400);
+}
+
+function showResult(type, icon, msg, stats, errors) {
+  resultHeader.className = `result-header ${type}`;
+  resultIcon.textContent = icon;
+  resultMsg.textContent  = msg;
+
+  if (stats) {
+    resultStats.style.display = 'flex';
+    resultStats.innerHTML = `
+      <div class="stat">
+        <span class="stat-num" style="color:var(--ok)">${stats.ok}</span>
+        <span class="stat-label">Marcadores OK</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">${stats.total}</span>
+        <span class="stat-label">Filas totales</span>
+      </div>
+      ${stats.errNum > 0 ? `<div class="stat"><span class="stat-num" style="color:var(--err)">${stats.errNum}</span><span class="stat-label">Con error</span></div>` : ''}
+    `;
+  } else {
+    resultStats.style.display = 'none';
+    resultStats.innerHTML = '';
+  }
+
+  if (errors && errors.length > 0) {
+    errorsSection.style.display = 'block';
+    errorsLabel.textContent = `Ver ${errors.length} fila${errors.length!==1?'s':''} con error`;
+    errorsList.innerHTML = errors.map(e =>
+      `<div class="error-item"><span class="error-item-icon">⚠</span><span>${escHtml(e)}</span></div>`
+    ).join('');
+    errorsList.classList.remove('open');
+    errorsToggle.classList.remove('open');
+  } else {
+    errorsSection.style.display = 'none';
+  }
+
+  resultPanel.classList.add('visible');
+}
+
+function hideResult() {
+  resultPanel.classList.remove('visible');
+  resultPanel.style.display = 'none';
+  setTimeout(() => { resultPanel.style.display = ''; }, 10);
+}
+
+function resetSelection() {
+  selectedFile = null;
+  fileInput.value = '';
+  fileInfo.classList.remove('visible');
+  dropZone.classList.remove('has-file');
+  uploadIcon.textContent = '📂';
+}
+
+errorsToggle.addEventListener('click', () => {
+  const open = errorsList.classList.toggle('open');
+  errorsToggle.classList.toggle('open', open);
+});
+</script>
+</body>
+</html>
