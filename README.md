@@ -8,7 +8,7 @@ Convierte un archivo Excel con coordenadas en un mapa interactivo (`.kmz`) listo
 
 ## 🌐 Ver la app en línea
 
-👉 **https://TU-USUARIO.github.io/TU-REPOSITORIO**
+👉 **https://fierroroberto.github.io/Mapas**
 
 *(Reemplaza con tu usuario y nombre de repositorio de GitHub)*
 
