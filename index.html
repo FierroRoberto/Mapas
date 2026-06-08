@@ -83,12 +83,12 @@
     .page {
       position: relative; z-index: 1;
       display: flex; flex-direction: column; align-items: center;
-      min-height: 100vh; padding: 28px 20px 56px;
+      min-height: 100vh; padding: 22px 20px 44px;
     }
 
     /* ── Header ── */
     .header {
-      text-align: center; margin-bottom:32px;
+      text-align: center; margin-bottom:26px;
       opacity:0; transform:translateY(-20px);
       animation: fadeUp 600ms var(--ease-out) 100ms forwards;
     }
@@ -106,18 +106,18 @@
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
     h1 {
       font-family: 'Syne', sans-serif;
-      font-size: clamp(32px,5vw,56px); font-weight: 800; line-height: 1.1;
+      font-size: clamp(24px,4vw,40px); font-weight: 800; line-height: 1.1;
       background: linear-gradient(135deg,#f0f4ff 30%,#3b82f6 70%,#06b6d4 100%);
       -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
       margin-bottom: 14px;
     }
-    .subtitle { font-size:16px; color:var(--text-mid); font-weight:300; max-width:460px; line-height:1.6; }
+    .subtitle { font-size:13px; color:var(--text-mid); font-weight:300; max-width:460px; line-height:1.5; text-align:center; }
 
     /* ── Card ── */
     .card {
       width:100%; max-width:680px;
       background:var(--surface); border:1px solid var(--border);
-      border-radius:var(--radius); padding:25px; position:relative; overflow:hidden;
+      border-radius:var(--radius); padding:20px; position:relative; overflow:hidden;
       opacity:0; transform:translateY(20px);
       animation: fadeUp 600ms var(--ease-out) 250ms forwards;
     }
@@ -130,8 +130,8 @@
     .instrucciones {
       background:var(--surface-2); border:1px solid var(--border);
       border-left:3px solid var(--accent); border-radius:var(--radius-sm);
-      padding:13px 16px; margin-bottom:20px;
-      font-size:13.5px; line-height:1.7; color:var(--text-mid);
+      padding:10px 14px; margin-bottom:16px;
+      font-size:13px; line-height:1.6; color:var(--text-mid);
       opacity:0; animation: fadeUp 500ms var(--ease-out) 350ms forwards;
     }
     .instrucciones strong { color:var(--text-hi); font-weight:500; }
@@ -151,9 +151,9 @@
     /* ── Zona de carga ── */
     .upload-area {
       border:2px dashed var(--border); border-radius:var(--radius);
-      padding:34px 32px; text-align:center; cursor:pointer;
+      padding:26px 24px; text-align:center; cursor:pointer;
       transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out), transform 200ms var(--ease-out);
-      background:transparent; position:relative; margin-bottom:14px;
+      background:transparent; position:relative; margin-bottom:12px;
       opacity:0; animation: fadeUp 500ms var(--ease-out) 450ms forwards;
     }
     @media (hover:hover) and (pointer:fine) {
@@ -163,7 +163,7 @@
     .upload-area.drag-over { border-color:var(--accent); background:rgba(59,130,246,.12); transform:scale(1.01); }
     .upload-area.has-file  { border-color:var(--ok); background:var(--ok-bg); }
     input[type="file"] { display:none; }
-    .upload-icon { font-size:36px; margin-bottom:10px; display:block; transition:transform 300ms var(--ease-out); }
+    .upload-icon { font-size:28px; margin-bottom:8px; display:block; transition:transform 300ms var(--ease-out); }
     .upload-label { font-size:15px; color:var(--text-mid); margin-bottom:6px; }
     .upload-label strong { color:var(--text-hi); }
     .upload-hint { font-size:12px; color:var(--text-lo); }
@@ -244,7 +244,7 @@
 
     /* ── Leyenda ── */
     .legend {
-      margin-top:22px; padding-top:20px; border-top:1px solid var(--border);
+      margin-top:16px; padding-top:16px; border-top:1px solid var(--border);
       opacity:0; animation: fadeUp 500ms var(--ease-out) 650ms forwards;
     }
     .legend-title {
@@ -334,6 +334,37 @@
       </div>
     </div>
 
+    <div class="legend">
+      <div class="legend-title">Escoge Un Color Para El Mapa</div>
+      <div class="legend-grid">
+        <div class="legend-item" title="#ef4444"><span class="legend-dot" style="background:#ef4444"></span></div>
+        <div class="legend-item" title="#f97316"><span class="legend-dot" style="background:#f97316"></span></div>
+        <div class="legend-item" title="#f59e0b"><span class="legend-dot" style="background:#f59e0b"></span></div>
+        <div class="legend-item" title="#fbbf24"><span class="legend-dot" style="background:#fbbf24"></span></div>
+        <div class="legend-item" title="#facc15"><span class="legend-dot" style="background:#facc15"></span></div>
+        <div class="legend-item" title="#a3e635"><span class="legend-dot" style="background:#a3e635"></span></div>
+        <div class="legend-item" title="#4ade80"><span class="legend-dot" style="background:#4ade80"></span></div>
+        <div class="legend-item" title="#34d399"><span class="legend-dot" style="background:#34d399"></span></div>
+        <div class="legend-item" title="#2dd4bf"><span class="legend-dot" style="background:#2dd4bf"></span></div>
+        <div class="legend-item" title="#22d3ee"><span class="legend-dot" style="background:#22d3ee"></span></div>
+        <div class="legend-item" title="#38bdf8"><span class="legend-dot" style="background:#38bdf8"></span></div>
+        <div class="legend-item" title="#60a5fa"><span class="legend-dot" style="background:#60a5fa"></span></div>
+        <div class="legend-item" title="#3b82f6"><span class="legend-dot" style="background:#3b82f6"></span></div>
+        <div class="legend-item" title="#818cf8"><span class="legend-dot" style="background:#818cf8"></span></div>
+        <div class="legend-item" title="#a78bfa"><span class="legend-dot" style="background:#a78bfa"></span></div>
+        <div class="legend-item" title="#c084fc"><span class="legend-dot" style="background:#c084fc"></span></div>
+        <div class="legend-item" title="#e879f9"><span class="legend-dot" style="background:#e879f9"></span></div>
+        <div class="legend-item" title="#f472b6"><span class="legend-dot" style="background:#f472b6"></span></div>
+        <div class="legend-item" title="#fb7185"><span class="legend-dot" style="background:#fb7185"></span></div>
+        <div class="legend-item" title="#94a3b8"><span class="legend-dot" style="background:#94a3b8"></span></div>
+        <div class="legend-item" title="#64748b"><span class="legend-dot" style="background:#64748b"></span></div>
+        <div class="legend-item" title="#ffffff"><span class="legend-dot" style="background:#ffffff;outline:1px solid rgba(255,255,255,.2)"></span></div>
+        <div class="legend-item" title="#fde68a"><span class="legend-dot" style="background:#fde68a"></span></div>
+        <div class="legend-item" title="#6ee7b7"><span class="legend-dot" style="background:#6ee7b7"></span></div>
+        <div class="legend-item" title="#ff4500"><span class="legend-dot" style="background:#ff4500"></span></div>
+      </div>
+    </div>
+
     <div class="upload-area" id="dropZone">
       <span class="upload-icon" id="uploadIcon">📂</span>
       <p class="upload-label"><strong>Arrastra tu Excel aquí</strong> o haz clic para seleccionar</p>
@@ -369,42 +400,12 @@
       </div>
     </div>
 
-    <div class="legend">
-      <div class="legend-title">Escoge Un Color Para El Mapa</div>
-      <div class="legend-grid">
-        <div class="legend-item" title="#ef4444"><span class="legend-dot" style="background:#ef4444"></span></div>
-        <div class="legend-item" title="#f97316"><span class="legend-dot" style="background:#f97316"></span></div>
-        <div class="legend-item" title="#f59e0b"><span class="legend-dot" style="background:#f59e0b"></span></div>
-        <div class="legend-item" title="#fbbf24"><span class="legend-dot" style="background:#fbbf24"></span></div>
-        <div class="legend-item" title="#facc15"><span class="legend-dot" style="background:#facc15"></span></div>
-        <div class="legend-item" title="#a3e635"><span class="legend-dot" style="background:#a3e635"></span></div>
-        <div class="legend-item" title="#4ade80"><span class="legend-dot" style="background:#4ade80"></span></div>
-        <div class="legend-item" title="#34d399"><span class="legend-dot" style="background:#34d399"></span></div>
-        <div class="legend-item" title="#2dd4bf"><span class="legend-dot" style="background:#2dd4bf"></span></div>
-        <div class="legend-item" title="#22d3ee"><span class="legend-dot" style="background:#22d3ee"></span></div>
-        <div class="legend-item" title="#38bdf8"><span class="legend-dot" style="background:#38bdf8"></span></div>
-        <div class="legend-item" title="#60a5fa"><span class="legend-dot" style="background:#60a5fa"></span></div>
-        <div class="legend-item" title="#3b82f6"><span class="legend-dot" style="background:#3b82f6"></span></div>
-        <div class="legend-item" title="#818cf8"><span class="legend-dot" style="background:#818cf8"></span></div>
-        <div class="legend-item" title="#a78bfa"><span class="legend-dot" style="background:#a78bfa"></span></div>
-        <div class="legend-item" title="#c084fc"><span class="legend-dot" style="background:#c084fc"></span></div>
-        <div class="legend-item" title="#e879f9"><span class="legend-dot" style="background:#e879f9"></span></div>
-        <div class="legend-item" title="#f472b6"><span class="legend-dot" style="background:#f472b6"></span></div>
-        <div class="legend-item" title="#fb7185"><span class="legend-dot" style="background:#fb7185"></span></div>
-        <div class="legend-item" title="#94a3b8"><span class="legend-dot" style="background:#94a3b8"></span></div>
-        <div class="legend-item" title="#64748b"><span class="legend-dot" style="background:#64748b"></span></div>
-        <div class="legend-item" title="#ffffff"><span class="legend-dot" style="background:#ffffff;outline:1px solid rgba(255,255,255,.2)"></span></div>
-        <div class="legend-item" title="#fde68a"><span class="legend-dot" style="background:#fde68a"></span></div>
-        <div class="legend-item" title="#6ee7b7"><span class="legend-dot" style="background:#6ee7b7"></span></div>
-        <div class="legend-item" title="#ff4500"><span class="legend-dot" style="background:#ff4500"></span></div>
-      </div>
-    </div>
-
   </div>
 
   <footer class="footer">
     100% en tu navegador — ningún dato se envía a ningún servidor.<br/>
     Importa el <strong>.kmz</strong> en <a href="https://www.google.com/maps/d/" target="_blank" rel="noopener">Google My Maps</a> o Google Earth.<br/>
+    <br/>
     Por Roberto Fierro A.
   </footer>
 
