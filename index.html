@@ -262,6 +262,7 @@
       transition:border-color 150ms, background 150ms, transform 150ms;
     }
     .legend-item:hover { border-color:var(--border-hi); background:var(--surface); transform:scale(1.15); }
+    .legend-item.selected { border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.5); transform:scale(1.18); }
     .legend-dot { width:14px;height:14px; border-radius:50%; flex-shrink:0; }
 
     /* ── Footer ── */
@@ -428,6 +429,17 @@ const CATEGORY_CONFIG = [
 ];
 const DEFAULT_CONFIG = { color: 'ffff6347', icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' };
 
+/** Color seleccionado por el usuario desde la paleta (null = usar categorías automáticas) */
+let userSelectedColor = null;
+
+/** Convierte hex #rrggbb a formato KML AABBGGRR */
+function hexToKml(hex) {
+  const r = hex.slice(1,3);
+  const g = hex.slice(3,5);
+  const b = hex.slice(5,7);
+  return `ff${b}${g}${r}`;
+}
+
 /* ══════════════════════════════════════════════════
    UTILIDADES
 ══════════════════════════════════════════════════ */
@@ -459,8 +471,54 @@ function parseCoords(raw) {
   return null;
 }
 
-/** Devuelve la config de color/icono según categoría */
+/** Genera un PNG de pin coloreado usando Canvas y lo devuelve como Blob */
+function makePinPng(hex) {
+  const W = 32, H = 48;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Sombra
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 2;
+
+  // Forma del pin
+  ctx.beginPath();
+  ctx.arc(W/2, W/2, W/2 - 1, 0, Math.PI * 2);
+  ctx.moveTo(1, W/2);
+  ctx.bezierCurveTo(1, H - 4, W/2, H, W/2, H);
+  ctx.bezierCurveTo(W/2, H, W - 1, H - 4, W - 1, W/2);
+  ctx.fillStyle = hex;
+  ctx.fill();
+
+  // Borde oscuro
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Círculo blanco interior
+  ctx.beginPath();
+  ctx.arc(W/2, W/2, 7, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.shadowColor = 'transparent';
+  ctx.fill();
+
+  return new Promise(resolve => {
+    canvas.toBlob(resolve, 'image/png');
+  });
+}
+
+/** Devuelve la config de color/icono según categoría o color seleccionado por usuario */
 function getCategoryConfig(cat) {
+  if (userSelectedColor) {
+    return {
+      color: hexToKml(userSelectedColor),
+      icon: 'files/pin.png',   // ruta relativa dentro del KMZ
+      useCustomPin: true
+    };
+  }
   if (!cat) return DEFAULT_CONFIG;
   const n = norm(cat);
   for (const cfg of CATEGORY_CONFIG) {
@@ -486,7 +544,7 @@ function escHtml(str) {
 /* ══════════════════════════════════════════════════
    GENERADOR DE KML
 ══════════════════════════════════════════════════ */
-function buildKml(rows) {
+async function buildKml(rows) {
   const cols = Object.keys(rows[0] || {});
 
   const nombreCol   = findCol(cols, ['Nombre Comercial','Nombre','Negocio','Establecimiento','Name']) || cols[0];
@@ -494,6 +552,12 @@ function buildKml(rows) {
   const latCol      = findCol(cols, ['Latitud','Latitude','Lat']);
   const lonCol      = findCol(cols, ['Longitud','Longitude','Lon','Lng']);
   const catCol      = findCol(cols, ['Categoría','Categoria','Tipo','Category']);
+
+  // Si hay color personalizado, generar el PNG una sola vez
+  let pinBlob = null;
+  if (userSelectedColor) {
+    pinBlob = await makePinPng(userSelectedColor);
+  }
 
   let ok = 0;
   const errores = [];
@@ -565,7 +629,7 @@ function buildKml(rows) {
   </Document>
 </kml>`;
 
-  return { kml, ok, total: rows.length, errores };
+  return { kml, ok, total: rows.length, errores, pinBlob };
 }
 
 /* ══════════════════════════════════════════════════
@@ -590,11 +654,14 @@ function readExcel(file) {
 
 /* ══════════════════════════════════════════════════
    DESCARGA DEL KMZ con JSZip
-   (KMZ = ZIP que contiene un doc.kml)
+   (KMZ = ZIP que contiene doc.kml + files/pin.png si hay color personalizado)
 ══════════════════════════════════════════════════ */
-async function downloadKmz(kmlString) {
+async function downloadKmz(kmlString, pinBlob) {
   const zip = new JSZip();
   zip.file('doc.kml', kmlString);
+  if (pinBlob) {
+    zip.folder('files').file('pin.png', pinBlob);
+  }
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -678,12 +745,12 @@ btnProcess.addEventListener('click', async () => {
     const rows = await readExcel(selectedFile);
     setProgress(50);
 
-    const { kml, ok, total, errores } = buildKml(rows);
+    const { kml, ok, total, errores, pinBlob } = await buildKml(rows);
     setProgress(80);
 
     if (ok === 0) throw new Error('No se pudo crear ningún marcador. Verifica que tu Excel tenga una columna "Ubicacion" con formato correcto (ej: 19.4326, -99.1332).');
 
-    await downloadKmz(kml);
+    await downloadKmz(kml, pinBlob);
     setProgress(100);
     await new Promise(r => setTimeout(r, 300));
     showProgress(false);
@@ -769,6 +836,31 @@ function resetSelection() {
 errorsToggle.addEventListener('click', () => {
   const open = errorsList.classList.toggle('open');
   errorsToggle.classList.toggle('open', open);
+});
+
+/* ══════════════════════════════════════════════════
+   SELECCIÓN DE COLOR EN LA PALETA
+══════════════════════════════════════════════════ */
+document.querySelectorAll('.legend-item').forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const hex = item.getAttribute('title');
+    if (!hex) return;
+
+    // Si ya estaba seleccionado, deseleccionar (volver a automático)
+    if (userSelectedColor === hex) {
+      userSelectedColor = null;
+      item.classList.remove('selected');
+      return;
+    }
+
+    // Deseleccionar el anterior
+    document.querySelectorAll('.legend-item.selected').forEach(el => el.classList.remove('selected'));
+
+    // Seleccionar el nuevo
+    userSelectedColor = hex;
+    item.classList.add('selected');
+  });
 });
 </script>
 </body>
